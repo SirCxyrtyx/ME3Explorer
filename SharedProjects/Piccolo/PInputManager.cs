@@ -49,7 +49,7 @@ namespace Piccolo {
 		private EventArgs nextInput;
 		private PInputType nextType;
 		private PCamera nextInputSource;
-		private PCanvas nextWindowsSource;
+		private PCanvasWpf nextWindowsSource;
 
 		private PPickPath mouseFocus;
 		private PPickPath previousMouseFocus;
@@ -302,7 +302,7 @@ namespace Piccolo {
 		/// <param name="type">The type of windows event being processed.</param>
 		/// <param name="camera">The camera from which to process the windows event.</param>
 		/// <param name="canvas">The source of the windows event being processed.</param>
-		public void ProcessEventFromCamera(EventArgs e, PInputType type, PCamera camera, PCanvas canvas) {
+		public void ProcessEventFromCamera(EventArgs e, PInputType type, PCamera camera, PCanvasWpf canvas) {
 			nextInput = e;
 			nextType = type;
 			nextInputSource = camera;

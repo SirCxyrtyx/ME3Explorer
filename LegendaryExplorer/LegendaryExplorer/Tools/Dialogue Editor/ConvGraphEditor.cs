@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Windows.Input;
 using Piccolo;
 using Piccolo.Event;
 
@@ -11,7 +12,7 @@ namespace LegendaryExplorer.DialogueEditor
     /// Creates a simple graph control with some random nodes and connected edges.
     /// An event handler allows users to drag nodes around, keeping the edges connected.
     /// </summary>
-    public class ConvGraphEditor : PCanvas
+    public class ConvGraphEditor : PCanvasWpf
     {
         /// <summary>
         /// Required designer variable.
@@ -35,7 +36,6 @@ namespace LegendaryExplorer.DialogueEditor
         public ConvGraphEditor(int width, int height)
         {
             InitializeComponent();
-            this.Size = new Size(width, height);
             nodeLayer = this.Layer;
             edgeLayer = new PLayer();
             Root.AddChild(edgeLayer);
@@ -78,7 +78,7 @@ namespace LegendaryExplorer.DialogueEditor
 
         public static void UpdateEdge(DiagEdEdge edge)
         {
-            // Note that the node's "FullBounds" must be used (instead of just the "Bound") 
+            // Note that the node's "FullBounds" must be used (instead of just the "Bound")
             // because the nodes have non-identity transforms which must be included when
             // determining their position.
 
@@ -101,7 +101,7 @@ namespace LegendaryExplorer.DialogueEditor
             edge.Reset();
             edge.AddBezier(start.X, start.Y, start.X + h1x, start.Y + h1y, end.X - h2x, end.Y - h2y, end.X, end.Y);
         }
-       
+
 
         private readonly NodeDragHandler dragHandler;
         /// <summary>
@@ -165,22 +165,19 @@ namespace LegendaryExplorer.DialogueEditor
         /// <summary>
         /// Clean up any resources being used.
         /// </summary>
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (disposing)
-            {
-                components?.Dispose();
-                nodeLayer.RemoveAllChildren();
-                edgeLayer.RemoveAllChildren();
-                backLayer.RemoveAllChildren();
-                zoomController?.Dispose();
-            }
-            base.Dispose(disposing);
+            components?.Dispose();
+            nodeLayer.RemoveAllChildren();
+            edgeLayer.RemoveAllChildren();
+            backLayer.RemoveAllChildren();
+            zoomController?.Dispose();
+            base.Dispose();
         }
 
         #region Component Designer generated code
         /// <summary>
-        /// Required method for Designer support - do not modify 
+        /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
         public void InitializeComponent()
@@ -188,25 +185,6 @@ namespace LegendaryExplorer.DialogueEditor
             components = new System.ComponentModel.Container();
         }
         #endregion
-        
-        private int updatingCount = 0;
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            if (!updating)
-            {
-                base.OnPaint(e);
-            }
-            else
-            {
-                const string msg = "Updating, please wait............";
-                e.Graphics.DrawString(msg.Substring(0, updatingCount + 21), SystemFonts.DefaultFont, Brushes.Black, Width - Width / 2, Height - Height / 2);
-                updatingCount++;
-                if (updatingCount + 21 > msg.Length)
-                {
-                    updatingCount = 0;
-                }
-            }
-        }
     }
 
     public class ZoomController : IDisposable
@@ -237,16 +215,16 @@ namespace LegendaryExplorer.DialogueEditor
             camera = null;
         }
 
-        public void OnKeyDown(object o, KeyEventArgs e)
+        public void OnKeyDown(object o, System.Windows.Input.KeyEventArgs e)
         {
-            if (e.Control)
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
             {
-                switch (e.KeyCode)
+                switch (e.Key)
                 {
-                    case Keys.OemMinus:
+                    case Key.OemMinus:
                         scaleView(0.8f, new PointF(camera.ViewBounds.X + (camera.ViewBounds.Height / 2), camera.ViewBounds.Y + (camera.ViewBounds.Width / 2)));
                         break;
-                    case Keys.Oemplus:
+                    case Key.OemPlus:
                         scaleView(1.2f, new PointF(camera.ViewBounds.X + (camera.ViewBounds.Height / 2), camera.ViewBounds.Y + (camera.ViewBounds.Width / 2)));
                         break;
                 }

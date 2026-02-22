@@ -613,6 +613,7 @@ namespace Piccolo.Nodes
         /// </summary>
         public virtual void UpdateBoundsFromPath()
         {
+            InvalidateD2DGeometry();
             updatingBoundsFromPath = true;
             if (path == null || path.PointCount == 0)
             {
@@ -658,6 +659,93 @@ namespace Piccolo.Nodes
             {
                 g.DrawPath(pen, path);
             }
+        }
+
+        // ── Direct2D geometry cache ───────────────────────────────────
+        private SharpDX.Direct2D1.PathGeometry _d2dGeometry;
+
+        private SharpDX.Direct2D1.PathGeometry GetOrCreateD2DGeometry(SharpDX.Direct2D1.Factory factory)
+        {
+            if (_d2dGeometry != null) return _d2dGeometry;
+
+            _d2dGeometry = new SharpDX.Direct2D1.PathGeometry(factory);
+            using var sink = _d2dGeometry.Open();
+
+            var pts   = path.PathData.Points;
+            var types = path.PathData.Types;
+            bool figureOpen = false;
+
+            for (int i = 0; i < pts.Length; i++)
+            {
+                byte type  = (byte)(types[i] & 0x07);
+                bool close = (types[i] & 0x80) != 0;
+
+                if (type == 0) // MoveTo
+                {
+                    if (figureOpen) sink.EndFigure(SharpDX.Direct2D1.FigureEnd.Open);
+                    sink.BeginFigure(new SharpDX.Mathematics.Interop.RawVector2(pts[i].X, pts[i].Y),
+                        SharpDX.Direct2D1.FigureBegin.Filled);
+                    figureOpen = true;
+                }
+                else if (type == 1) // LineTo
+                {
+                    if (!figureOpen)
+                    {
+                        sink.BeginFigure(new SharpDX.Mathematics.Interop.RawVector2(pts[i].X, pts[i].Y),
+                            SharpDX.Direct2D1.FigureBegin.Filled);
+                        figureOpen = true;
+                    }
+                    else
+                    {
+                        sink.AddLine(new SharpDX.Mathematics.Interop.RawVector2(pts[i].X, pts[i].Y));
+                    }
+                }
+                else if (type == 3 && i + 2 < pts.Length) // Cubic bezier
+                {
+                    if (!figureOpen)
+                    {
+                        sink.BeginFigure(new SharpDX.Mathematics.Interop.RawVector2(pts[i].X, pts[i].Y),
+                            SharpDX.Direct2D1.FigureBegin.Filled);
+                        figureOpen = true;
+                    }
+                    sink.AddBezier(new SharpDX.Direct2D1.BezierSegment
+                    {
+                        Point1 = new SharpDX.Mathematics.Interop.RawVector2(pts[i].X,     pts[i].Y),
+                        Point2 = new SharpDX.Mathematics.Interop.RawVector2(pts[i+1].X,   pts[i+1].Y),
+                        Point3 = new SharpDX.Mathematics.Interop.RawVector2(pts[i+2].X,   pts[i+2].Y),
+                    });
+                    i += 2;
+                }
+
+                if (close && figureOpen)
+                {
+                    sink.EndFigure(SharpDX.Direct2D1.FigureEnd.Closed);
+                    figureOpen = false;
+                }
+            }
+            if (figureOpen) sink.EndFigure(SharpDX.Direct2D1.FigureEnd.Open);
+            sink.Close();
+            return _d2dGeometry;
+        }
+
+        private void InvalidateD2DGeometry()
+        {
+            _d2dGeometry?.Dispose();
+            _d2dGeometry = null;
+        }
+
+        protected override void Paint(Util.PD2DPaintContext paintContext)
+        {
+            if (path.PointCount == 0) return;
+
+            using var factory = paintContext.D2DContext.Factory.QueryInterface<SharpDX.Direct2D1.Factory1>();
+            var geom = GetOrCreateD2DGeometry(factory);
+
+            if (Brush is SolidBrush sb)
+                paintContext.D2DContext.FillGeometry(geom, paintContext.GetBrush(sb.Color));
+
+            if (pen?.Brush is SolidBrush pb)
+                paintContext.D2DContext.DrawGeometry(geom, paintContext.GetBrush(pb.Color), pen.Width);
         }
         #endregion
 

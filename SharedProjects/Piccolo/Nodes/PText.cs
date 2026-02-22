@@ -261,6 +261,7 @@ namespace Piccolo.Nodes {
 				Font old = font;
 				font = value;
                 FontSizeInPoints = font.SizeInPoints;
+				InvalidateDWTextFormat();
 				InvalidatePaint();
 				RecomputeBounds();
 				FirePropertyChangedEvent(PROPERTY_KEY_FONT, PROPERTY_CODE_FONT, old, font);
@@ -303,6 +304,53 @@ namespace Piccolo.Nodes {
 
 					g.DrawString(text, renderFont, textBrush, Bounds, stringFormat);
 				}
+			}
+		}
+
+		// ── DirectWrite text cache ────────────────────────────────────
+		private SharpDX.DirectWrite.TextFormat _dwTextFormat;
+
+		private SharpDX.DirectWrite.TextFormat GetOrCreateTextFormat(SharpDX.DirectWrite.Factory factory)
+		{
+			if (_dwTextFormat != null) return _dwTextFormat;
+			_dwTextFormat = new SharpDX.DirectWrite.TextFormat(factory,
+				font.Name,
+				font.Bold   ? SharpDX.DirectWrite.FontWeight.Bold    : SharpDX.DirectWrite.FontWeight.Regular,
+				font.Italic ? SharpDX.DirectWrite.FontStyle.Italic   : SharpDX.DirectWrite.FontStyle.Normal,
+				SharpDX.DirectWrite.FontStretch.Normal,
+				FontSizeInPoints);
+			return _dwTextFormat;
+		}
+
+		private void InvalidateDWTextFormat()
+		{
+			_dwTextFormat?.Dispose();
+			_dwTextFormat = null;
+		}
+
+		protected override void Paint(Util.PD2DPaintContext paintContext)
+		{
+			base.Paint(paintContext);
+
+			if (text == null || textBrush == null || font == null) return;
+			if (textBrush is not SolidBrush sb) return;
+
+			float renderedFontSize = FontSizeInPoints * paintContext.Scale;
+			if (renderedFontSize < PUtil.GreekThreshold)
+			{
+				paintContext.D2DContext.FillRectangle(
+					Util.PD2DPaintContext.ToRawRect(Bounds),
+					paintContext.GetBrush(sb.Color));
+			}
+			else if (renderedFontSize < PUtil.MaxFontSize)
+			{
+				var fmt = GetOrCreateTextFormat(paintContext.DWriteFactory);
+				using var layout = new SharpDX.DirectWrite.TextLayout(paintContext.DWriteFactory,
+					text, fmt, Bounds.Width, Bounds.Height);
+				paintContext.D2DContext.DrawTextLayout(
+					new SharpDX.Mathematics.Interop.RawVector2(Bounds.X, Bounds.Y),
+					layout,
+					paintContext.GetBrush(sb.Color));
 			}
 		}
 		#endregion

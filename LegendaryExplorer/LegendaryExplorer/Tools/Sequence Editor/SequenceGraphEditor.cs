@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Windows.Input;
 using LegendaryExplorer.Tools.SequenceObjects;
 using Piccolo;
 using Piccolo.Event;
@@ -12,7 +13,7 @@ namespace LegendaryExplorer.Tools.Sequence_Editor
     /// Creates a simple graph control with some random nodes and connected edges.
     /// An event handler allows users to drag nodes around, keeping the edges connected.
     /// </summary>
-    public sealed class SequenceGraphEditor : PCanvas
+    public sealed class SequenceGraphEditor : PCanvasWpf
     {
         /// <summary>
         /// Required designer variable.
@@ -34,7 +35,6 @@ namespace LegendaryExplorer.Tools.Sequence_Editor
         public SequenceGraphEditor(int width, int height)
         {
             InitializeComponent();
-            this.Size = new Size(width, height);
             nodeLayer = this.Layer;
             edgeLayer = new PLayer();
             Root.AddChild(edgeLayer);
@@ -77,7 +77,7 @@ namespace LegendaryExplorer.Tools.Sequence_Editor
 
         public static void UpdateEdge(SeqEdEdge edge)
         {
-            // Note that the node's "FullBounds" must be used (instead of just the "Bound") 
+            // Note that the node's "FullBounds" must be used (instead of just the "Bound")
             // because the nodes have non-identity transforms which must be included when
             // determining their position.
 
@@ -257,22 +257,19 @@ namespace LegendaryExplorer.Tools.Sequence_Editor
         /// <summary>
         /// Clean up any resources being used.
         /// </summary>
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (disposing)
-            {
-                components?.Dispose();
-                nodeLayer.RemoveAllChildren();
-                edgeLayer.RemoveAllChildren();
-                backLayer.RemoveAllChildren();
-                zoomController.Dispose();
-            }
-            base.Dispose(disposing);
+            components?.Dispose();
+            nodeLayer.RemoveAllChildren();
+            edgeLayer.RemoveAllChildren();
+            backLayer.RemoveAllChildren();
+            zoomController.Dispose();
+            base.Dispose();
         }
 
         #region Component Designer generated code
         /// <summary>
-        /// Required method for Designer support - do not modify 
+        /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
         public void InitializeComponent()
@@ -285,9 +282,9 @@ namespace LegendaryExplorer.Tools.Sequence_Editor
     public class ZoomController : IDisposable
     {
         private PCamera camera;
-        private PCanvas graphEditor;
+        private PCanvasWpf graphEditor;
 
-        public ZoomController(PCanvas graphEditor)
+        public ZoomController(PCanvasWpf graphEditor)
         {
             this.graphEditor = graphEditor;
             this.camera = graphEditor.Camera;
@@ -308,16 +305,16 @@ namespace LegendaryExplorer.Tools.Sequence_Editor
             camera = null;
         }
 
-        public void OnKeyDown(object o, KeyEventArgs e)
+        public void OnKeyDown(object o, System.Windows.Input.KeyEventArgs e)
         {
-            if (e.Control)
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
             {
-                switch (e.KeyCode)
+                switch (e.Key)
                 {
-                    case Keys.OemMinus:
+                    case Key.OemMinus:
                         ScaleView(0.8f, new PointF(camera.ViewBounds.X + (camera.ViewBounds.Height / 2), camera.ViewBounds.Y + (camera.ViewBounds.Width / 2)));
                         break;
-                    case Keys.Oemplus:
+                    case Key.OemPlus:
                         ScaleView(1.2f, new PointF(camera.ViewBounds.X + (camera.ViewBounds.Height / 2), camera.ViewBounds.Y + (camera.ViewBounds.Width / 2)));
                         break;
                 }

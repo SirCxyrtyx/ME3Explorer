@@ -14,7 +14,7 @@ namespace LegendaryExplorer.Tools.WwiseEditor
     /// Creates a simple graph control with some random nodes and connected edges.
     /// An event handler allows users to drag nodes around, keeping the edges connected.
     /// </summary>
-    public sealed class WwiseGraphEditor : PCanvas
+    public sealed class WwiseGraphEditor : PCanvasWpf
     {
         /// <summary>
         /// Required designer variable.
@@ -38,7 +38,6 @@ namespace LegendaryExplorer.Tools.WwiseEditor
         public WwiseGraphEditor(int width, int height)
         {
             InitializeComponent();
-            this.Size = new Size(width, height);
             nodeLayer = this.Layer;
             edgeLayer = new PLayer();
             Root.AddChild(edgeLayer);
@@ -55,7 +54,7 @@ namespace LegendaryExplorer.Tools.WwiseEditor
         public void AllowDragging()
         {
             nodeLayer.RemoveInputEventListener(dragHandler);
-            nodeLayer.AddInputEventListener(dragHandler); 
+            nodeLayer.AddInputEventListener(dragHandler);
         }
 
         public void DisableDragging()
@@ -81,7 +80,7 @@ namespace LegendaryExplorer.Tools.WwiseEditor
 
         public static void UpdateEdge(WwiseEdEdge edge)
         {
-            // Note that the node's "FullBounds" must be used (instead of just the "Bound") 
+            // Note that the node's "FullBounds" must be used (instead of just the "Bound")
             // because the nodes have non-identity transforms which must be included when
             // determining their position.
 
@@ -255,22 +254,19 @@ namespace LegendaryExplorer.Tools.WwiseEditor
         /// <summary>
         /// Clean up any resources being used.
         /// </summary>
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (disposing)
-            {
-                components?.Dispose();
-                nodeLayer.RemoveAllChildren();
-                edgeLayer.RemoveAllChildren();
-                backLayer.RemoveAllChildren();
-                zoomController.Dispose();
-            }
-            base.Dispose(disposing);
+            components?.Dispose();
+            nodeLayer.RemoveAllChildren();
+            edgeLayer.RemoveAllChildren();
+            backLayer.RemoveAllChildren();
+            zoomController.Dispose();
+            base.Dispose();
         }
 
         #region Component Designer generated code
         /// <summary>
-        /// Required method for Designer support - do not modify 
+        /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
         public void InitializeComponent()
@@ -278,24 +274,5 @@ namespace LegendaryExplorer.Tools.WwiseEditor
             components = new Container();
         }
         #endregion
-        
-        private int updatingCount = 0;
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            if (!updating)
-            {
-                base.OnPaint(e);
-            }
-            else
-            {
-                const string msg = "Updating, please wait............";
-                e.Graphics.DrawString(msg.Substring(0, updatingCount + 21), SystemFonts.DefaultFont, Brushes.Black, Width - Width / 2, Height - Height / 2);
-                updatingCount++;
-                if (updatingCount + 21 > msg.Length)
-                {
-                    updatingCount = 0;
-                }
-            }
-        }
     }
 }

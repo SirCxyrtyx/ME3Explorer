@@ -190,7 +190,7 @@ namespace Piccolo.Event {
 		/// Set the canvas cursor, and remember the previous cursor on the cursor stack.
 		/// </summary>
 		/// <param name="cursor">The new canvas cursor.</param>
-		public void PushCursor(Cursor cursor) {
+		public void PushCursor(System.Windows.Input.Cursor cursor) {
 			TopCamera.Canvas.PushCursor(cursor);
 		}
 	
@@ -228,7 +228,7 @@ namespace Piccolo.Event {
 		/// <remarks>
 		/// This is the canvas where the originating event came from.
 		/// </remarks>
-		public PCanvas Canvas => TopCamera.Canvas;
+		public PCanvasWpf Canvas => TopCamera.Canvas;
 
         /// <summary>
 		/// Gets the input manager that dispatched this event.

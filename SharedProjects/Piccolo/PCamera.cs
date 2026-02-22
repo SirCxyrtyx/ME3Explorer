@@ -117,7 +117,7 @@ namespace Piccolo {
 		/// </remarks>
 		public const int PROPERTY_CODE_VIEWTRANSFORM = 1 << 11;
 
-		private PCanvas canvas;
+		private PCanvasWpf canvas;
 		private readonly List<PLayer> layers;
 		private readonly PMatrix viewMatrix;
 		private CameraViewConstraint viewConstraint;
@@ -156,9 +156,9 @@ namespace Piccolo {
 		/// When the camera is repainted it will request repaints on this canvas.
 		/// </para>
 		/// </remarks>
-		public PCanvas Canvas {
+		public PCanvasWpf Canvas {
 			get => canvas;
-            set { 
+            set {
 				canvas = value;
 				InvalidatePaint();
 			}
@@ -186,7 +186,7 @@ namespace Piccolo {
 					bounds = LocalToParent(bounds);
 				}
 
-                Canvas?.InvalidateBounds(bounds);
+                Canvas?.RequestRedraw();
 
                 Parent.RepaintFrom(bounds, this);
 			}
@@ -469,7 +469,27 @@ namespace Piccolo {
 			paintContext.PushCamera(this);
 			base.FullPaint(paintContext);
 			paintContext.PopCamera();
-		}				
+		}
+
+		// ── Direct2D rendering path ────────────────────────────────────
+
+		protected override void Paint(Util.PD2DPaintContext paintContext) {
+			base.Paint(paintContext);
+			// Paint through the view matrix
+			paintContext.PushClip(new Region(Bounds));
+			paintContext.PushMatrix(viewMatrix);
+			foreach (PLayer each in layers) {
+				each.FullPaint(paintContext);
+			}
+			paintContext.PopMatrix();
+			paintContext.PopClip();
+		}
+
+		public override void FullPaint(Util.PD2DPaintContext paintContext) {
+			paintContext.PushCamera(this);
+			base.FullPaint(paintContext);
+			paintContext.PopCamera();
+		}
 		#endregion
 
 		#region Picking
@@ -735,7 +755,7 @@ namespace Piccolo {
 		// translate from the camera's local coordinate system (above the
 		// camera's view matrix) to the camera view coordinate system
 		// (below the camera's view matrix). When converting geometry from
-		// one of the canvas�s layers you must go through the view matrix.
+		// one of the canvas�s layers you must go through the view matrix.
 		//****************************************************************
 
 		/// <summary>
@@ -833,7 +853,7 @@ namespace Piccolo {
 		/// <remarks>
 		/// If the duration is 0 then the view will be transformed immediately, and null will
 		/// be returned.  Else a new PTransformActivity will get returned that is set to
-		/// animate the camera�s view matrix to the new bounds. If shouldScaleToFit is true,
+		/// animate the camera�s view matrix to the new bounds. If shouldScaleToFit is true,
 		/// then the camera will also scale its view so that the given bounds fit fully within
 		/// the camera's view bounds, else the camera will maintain its original scale.
 		/// </remarks>
@@ -866,7 +886,7 @@ namespace Piccolo {
 		/// <remarks>
 		/// If the duration is 0 then the view will be transformed immediately, and null will
 		/// be returned. Else a new PTransformActivity will get returned that is set to
-		/// animate the camera�s view matrix to the new bounds.
+		/// animate the camera�s view matrix to the new bounds.
 		/// </remarks>
 		public PTransformActivity AnimateViewToPanToBounds(RectangleF panToBounds, long duration) {
 			SizeF delta = PUtil.DeltaRequiredToContain(ViewBounds, panToBounds);

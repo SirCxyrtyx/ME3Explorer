@@ -2739,7 +2739,7 @@ namespace Piccolo
                     }
                 }
 
-                // 4. Now that my children’s bounds are valid and my own bounds are valid run any
+                // 4. Now that my childrenï¿½s bounds are valid and my own bounds are valid run any
                 // layout algorithm here. Note that if you try to layout volatile children piccolo
                 // will most likely start a "soft" infinite loop. It won't freeze your program, but
                 // it will make an infinite number of calls to BeginInvoke later. You don't
@@ -2747,7 +2747,7 @@ namespace Piccolo
                 LayoutChildren();
 
                 // 5. If the full bounds cache is invalid then recompute the full bounds cache
-                // here after our own bounds and the children’s bounds have been computed above.
+                // here after our own bounds and the childrenï¿½s bounds have been computed above.
                 if (FullBoundsInvalid)
                 {
                     RectangleF oldRect = fullBoundsCache;
@@ -3531,6 +3531,19 @@ namespace Piccolo
         }
 
         /// <summary>
+        /// Paint this node via Direct2D. Override in subclasses for D2D on-screen rendering.
+        /// </summary>
+        protected virtual void Paint(Util.PD2DPaintContext paintContext)
+        {
+            if (Brush is SolidBrush sb)
+            {
+                paintContext.D2DContext.FillRectangle(
+                    Util.PD2DPaintContext.ToRawRect(Bounds),
+                    paintContext.GetBrush(sb.Color));
+            }
+        }
+
+        /// <summary>
         /// Paint this node and all of its descendents.
         /// </summary>
         /// <param name="paintContext">The paint context to use for painting this node.</param>
@@ -3571,6 +3584,36 @@ namespace Piccolo
         /// The paint context to use for painting after the children are painted.
         /// </param>
         protected virtual void PaintAfterChildren(PPaintContext paintContext)
+        {
+        }
+
+        /// <summary>
+        /// Paint this node and all of its descendants via Direct2D.
+        /// </summary>
+        public virtual void FullPaint(Util.PD2DPaintContext paintContext)
+        {
+            if (Visible && FullIntersects(paintContext.LocalClip))
+            {
+                paintContext.PushMatrix(matrix);
+
+                if (!Occluded)
+                {
+                    Paint(paintContext);
+                }
+
+                int count = ChildrenCount;
+                for (int i = 0; i < count; i++)
+                {
+                    children[i].FullPaint(paintContext);
+                }
+
+                PaintAfterChildren(paintContext);
+
+                paintContext.PopMatrix();
+            }
+        }
+
+        protected virtual void PaintAfterChildren(Util.PD2DPaintContext paintContext)
         {
         }
 
@@ -3668,7 +3711,7 @@ namespace Piccolo
             g.ScaleTransform(scale, scale);
             g.TranslateTransform(-bounds.X, -bounds.Y);
 
-            var pc = new PPaintContext(g, null)
+            var pc = new PPaintContext(g)
             {
                 RenderQuality = RenderQuality.HighQuality
             };
@@ -3698,7 +3741,7 @@ namespace Piccolo
         // children are picked.
         //
         // PickAfterChildren() - Pick nodes here that should be picked after the
-        // node’s children are picked.
+        // nodeï¿½s children are picked.
         // 
         // Note that FullPick should not normally be overridden.
         // 
@@ -4099,7 +4142,7 @@ namespace Piccolo
         /// <param name="child">The child to remove.</param>
         /// <remarks>
         /// Any subsequent children are shifted to the left (one is subtracted 
-        /// from their indices). The removed child’s parent is set to null.
+        /// from their indices). The removed childï¿½s parent is set to null.
         /// </remarks>
         /// <returns>The removed child.</returns>
         public virtual PNode RemoveChild(PNode child)
@@ -4113,7 +4156,7 @@ namespace Piccolo
         /// <param name="index">The index of the child to remove.</param>
         /// <remarks >
         /// Any subsequent children are shifted to the left (one is subtracted 
-        /// from their indices). The removed child’s parent is set to null.
+        /// from their indices). The removed childï¿½s parent is set to null.
         /// </remarks>
         /// <returns>The removed child.</returns>
         public virtual PNode RemoveChild(int index)
@@ -4137,7 +4180,7 @@ namespace Piccolo
         }
 
         /// <summary>
-        /// Remove all the children in the given enumerable from this node’s
+        /// Remove all the children in the given enumerable from this nodeï¿½s
         /// list of children.
         /// </summary>
         /// <param name="childrenNodes">
@@ -4179,7 +4222,7 @@ namespace Piccolo
         }
 
         /// <summary>
-        /// Delete this node by removing it from its parent’s list of children.
+        /// Delete this node by removing it from its parentï¿½s list of children.
         /// </summary>
         public virtual void RemoveFromParent()
         {
@@ -4274,14 +4317,14 @@ namespace Piccolo
         }
 
 		/// <summary>
-		/// Gets a reference to the list used to manage this node’s children.
+		/// Gets a reference to the list used to manage this nodeï¿½s children.
 		/// </summary>
 		/// <value>A reference to the list of children.</value>
 		/// <remarks>This list should not be modified.</remarks>
 		public virtual List<PNode> ChildrenReference => children ??= new List<PNode>();
 
         /// <summary>
-        /// Return an enumerator for this node’s direct descendent children.
+        /// Return an enumerator for this nodeï¿½s direct descendent children.
         /// </summary>
         /// <returns>An enumerator for this node's children.</returns>
         /// <remarks>
@@ -4302,7 +4345,7 @@ namespace Piccolo
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         /// <summary>
-        /// Return an enumerator for this node’s direct descendent children.
+        /// Return an enumerator for this nodeï¿½s direct descendent children.
         /// </summary>
         /// <value>An enumerator for this node's children.</value>
         public IEnumerator<PNode> ChildrenEnumerator

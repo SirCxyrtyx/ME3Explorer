@@ -208,7 +208,7 @@ namespace Piccolo {
 
 			List<PNode> nodes = GetAllNodes(PUtil.CAMERA_WITH_CANVAS_FILTER, null);
 			foreach (PCamera each in nodes) {
-				each.Canvas.PaintImmediately();
+				each.Canvas.RequestRedraw();
 			}
 		}
 		#endregion
@@ -306,8 +306,8 @@ namespace Piccolo {
 
 			//force the control to redraw when input has caused invalidation.
 			//Without this there can be a huge lag when dragging nodes
-            PCanvas invokeCanvas = InvokeCanvas;
-            if (invokeCanvas.IsInvalidated)
+            PCanvasWpf invokeCanvas = InvokeCanvas;
+            if (invokeCanvas is { IsInvalidated: true })
             {
                 invokeCanvas.Update();
             }
@@ -370,10 +370,10 @@ namespace Piccolo {
 
 			if (!processInputsScheduled && !processingInputs && 
 				(FullBoundsInvalid || ChildBoundsInvalid || PaintInvalid || ChildPaintInvalid)) {
-				PCanvas canvas = InvokeCanvas;
-				if (canvas is { IsHandleCreated: true } && processScheduledInputsDelegate != null) {
+				PCanvasWpf canvas = InvokeCanvas;
+				if (canvas is { IsLoaded: true } && processScheduledInputsDelegate != null) {
 					processInputsScheduled = true;
-					canvas.BeginInvoke(processScheduledInputsDelegate);
+					canvas.Dispatcher.BeginInvoke(processScheduledInputsDelegate);
 				}
 			}
 		}
@@ -381,9 +381,9 @@ namespace Piccolo {
 		/// <summary>
 		/// Returns a canvas hosting the piccolo scene-graph, to be used for invoking.
 		/// </summary>
-		private PCanvas InvokeCanvas {
+		private PCanvasWpf InvokeCanvas {
 			get {
-				PCanvas canvas = null;
+				PCanvasWpf canvas = null;
 				foreach (PNode child in this) {
 					if (child is PCamera pCamera) {
 						PCamera camera = pCamera;

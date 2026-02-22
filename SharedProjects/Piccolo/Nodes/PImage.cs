@@ -125,8 +125,9 @@ namespace Piccolo.Nodes {
 		/// <value>The image shown by this node.</value>
 		public virtual Image Image {
 			get => image;
-            set { 
+            set {
 				Image old = image;
+				InvalidateD2DBitmap();
 				image = value;
 				if (image == null) {
 					SetBounds(0, 0, 0, 0);
@@ -154,6 +155,51 @@ namespace Piccolo.Nodes {
 
 				g.DrawImage(image, b);
 			}
+		}
+
+		// ── D2D bitmap cache ──────────────────────────────────────────
+		private SharpDX.Direct2D1.Bitmap _d2dBitmap;
+
+		private SharpDX.Direct2D1.Bitmap GetOrCreateD2DBitmap(SharpDX.Direct2D1.DeviceContext ctx)
+		{
+			if (_d2dBitmap != null) return _d2dBitmap;
+			if (image is not System.Drawing.Bitmap bmp) return null;
+
+			var data = bmp.LockBits(
+				new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
+				System.Drawing.Imaging.ImageLockMode.ReadOnly,
+				System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+			try
+			{
+				_d2dBitmap = new SharpDX.Direct2D1.Bitmap(ctx,
+					new SharpDX.Size2(bmp.Width, bmp.Height),
+					new SharpDX.DataPointer(data.Scan0, data.Stride * bmp.Height),
+					data.Stride,
+					new SharpDX.Direct2D1.BitmapProperties(
+						new SharpDX.Direct2D1.PixelFormat(
+							SharpDX.DXGI.Format.B8G8R8A8_UNorm,
+							SharpDX.Direct2D1.AlphaMode.Premultiplied)));
+			}
+			finally { bmp.UnlockBits(data); }
+
+			return _d2dBitmap;
+		}
+
+		private void InvalidateD2DBitmap()
+		{
+			_d2dBitmap?.Dispose();
+			_d2dBitmap = null;
+		}
+
+		protected override void Paint(Util.PD2DPaintContext paintContext)
+		{
+			if (Image == null) return;
+			var bmp = GetOrCreateD2DBitmap(paintContext.D2DContext);
+			if (bmp != null)
+				paintContext.D2DContext.DrawBitmap(bmp,
+					Util.PD2DPaintContext.ToRawRect(Bounds),
+					1.0f,
+					SharpDX.Direct2D1.BitmapInterpolationMode.Linear);
 		}
 		#endregion
 

@@ -3,7 +3,6 @@ using System.Collections;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Reflection;
 using System.Collections.Generic;
 using Piccolo;
 using Piccolo.Event;
@@ -14,7 +13,7 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
     /// Creates a simple graph control with some random nodes and connected edges.
     /// An event handler allows users to drag nodes around, keeping the edges connected.
     /// </summary>
-    public class PathingGraphEditor : PCanvas
+    public class PathingGraphEditor : PCanvasWpf
     {
         /// <summary>
         /// Required designer variable.
@@ -37,7 +36,6 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
         public PathingGraphEditor(int width, int height)
         {
             InitializeComponent();
-            Size = new Size(width, height);
             nodeLayer = this.Layer;
             edgeLayer = new PLayer();
             Root.AddChild(edgeLayer);
@@ -85,7 +83,7 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
 
         public static void UpdateEdgeBezier(PathfindingEditorEdge edge)
         {
-            // Note that the node's "FullBounds" must be used (instead of just the "Bound") 
+            // Note that the node's "FullBounds" must be used (instead of just the "Bound")
             // because the nodes have non-identity transforms which must be included when
             // determining their position.
             ArrayList nodes = (ArrayList)edge.Tag;
@@ -130,7 +128,7 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
         /// <param name="edge"></param>
         public static void UpdateEdgeStraight(PathfindingEditorEdge edge)
         {
-            // Note that the node's "FullBounds" must be used (instead of just the "Bound") 
+            // Note that the node's "FullBounds" must be used (instead of just the "Bound")
             // because the nodes have non-identity transforms which must be included when
             // determining their position.
 
@@ -206,21 +204,18 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
         /// <summary>
         /// Clean up any resources being used.
         /// </summary>
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (disposing)
-            {
-                components?.Dispose();
-            }
+            components?.Dispose();
             nodeLayer.RemoveAllChildren();
             edgeLayer.RemoveAllChildren();
             backLayer.RemoveAllChildren();
-            base.Dispose(disposing);
+            base.Dispose();
         }
 
         #region Component Designer generated code
         /// <summary>
-        /// Required method for Designer support - do not modify 
+        /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
         public void InitializeComponent()
@@ -229,7 +224,6 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
         }
         #endregion
 
-        private int updatingCount = 0;
         public bool showVolume_BioTriggerVolume = false;
         public bool showVolume_BioTriggerStream = false;
         public bool showVolume_DynamicBlockingVolume = false;
@@ -238,48 +232,5 @@ namespace LegendaryExplorer.Tools.PathfindingEditor
         public bool showVolume_SFXCombatZones = false;
         public bool showVolume_SFXBlockingVolume_Ledge = false;
         private readonly NodeDragHandler dragHandler;
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            if (!updating)
-            {
-                base.OnPaint(e);
-            }
-            else
-            {
-                const string msg = "Updating, please wait............"; //without multithread this does nothing.
-                e.Graphics.DrawString(msg.Substring(0, updatingCount + 21), SystemFonts.DefaultFont, Brushes.Black, Width - Width / 2, Height - Height / 2);
-                updatingCount++;
-                if (updatingCount + 21 > msg.Length)
-                {
-                    updatingCount = 0;
-                }
-            }
-        }
-
-        public void DebugEventHandlers()
-        {
-            EventHandlerList events = (EventHandlerList)typeof(Component)
-                           .GetField("events", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.GetField)
-                           .GetValue(this);
-
-            object current = events.GetType()
-                   .GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.GetField)[0]
-                   .GetValue(events);
-
-            List<Delegate> delegates = new List<Delegate>();
-            while (current != null)
-            {
-                delegates.Add((Delegate)GetField(current, "handler"));
-                current = GetField(current, "next");
-            }
-        }
-
-        public static object GetField(object listItem, string fieldName)
-        {
-            return listItem.GetType()
-               .GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.GetField)
-               .GetValue(listItem);
-        }
     }
 }
