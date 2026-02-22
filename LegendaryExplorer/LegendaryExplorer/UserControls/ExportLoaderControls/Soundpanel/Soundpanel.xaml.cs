@@ -13,7 +13,6 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using Be.Windows.Forms;
 using FontAwesome5;
 using LegendaryExplorer.Audio;
@@ -54,7 +53,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
         private readonly List<EmbeddedWEMFile> AllWems = new(); //used only for rebuilding soundbank
         WwiseStream wwiseStream;
         public string afcPath = "";
-        readonly DispatcherTimer seekbarUpdateTimer = new();
+        private bool _seekbarUpdateActive;
         private bool SeekUpdatingDueToTimer;
         private bool SeekDragging;
         Stream audioStream;
@@ -136,21 +135,6 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
         }
         public static readonly DependencyProperty HexBoxMaxWidthProperty = DependencyProperty.Register(nameof(HexBoxMaxWidth), typeof( int ), typeof( Soundpanel ), new PropertyMetadata(default(int)));
 
-        public int SeekbarUpdatePeriod
-        {
-            get => (int)GetValue(SeekbarUpdatePeriodProperty);
-            set => SetValue(SeekbarUpdatePeriodProperty, value);
-        }
-        public static readonly DependencyProperty SeekbarUpdatePeriodProperty = DependencyProperty.Register(nameof(SeekbarUpdatePeriod), typeof( int ), typeof( Soundpanel ), new PropertyMetadata(250, SeekbarUpdatePeriodChanged));
-
-        private static void SeekbarUpdatePeriodChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is Soundpanel sp)
-            {
-                sp.seekbarUpdateTimer.Interval = new TimeSpan(0, 0, 0, 0, (int)e.NewValue);
-            }
-        }
-
         public bool MiniPlayerMode
         {
             get => (bool)GetValue(MiniPlayerModeProperty);
@@ -203,8 +187,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
             LoadCommands();
             CurrentVolume = 0.65f;
             _playbackState = PlaybackState.Stopped;
-            seekbarUpdateTimer.Interval = new TimeSpan(0, 0, 0, 0, 250);
-            seekbarUpdateTimer.Tick += UpdateSeekBarPos;
+            CompositionTarget.Rendering += UpdateSeekBarPos;
             InitializeComponent();
         }
 
@@ -940,9 +923,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
                         CurrentTrackLength = _audioPlayer.GetLengthInSeconds();
                         playToggle = true;
 
-                        // Start the timer.  Note that this call can be made from any thread.
-                        seekbarUpdateTimer.Start();
-                        // Timer callback code here...
+                        _seekbarUpdateActive = true;
                     }
                     catch (Exception)
                     {
@@ -996,9 +977,9 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
             GenerateWaveform(audioStream);
         }
 
-        private void UpdateSeekBarPos(object state, EventArgs e)
+        private void UpdateSeekBarPos(object sender, EventArgs e)
         {
-            if (!SeekDragging)
+            if (_seekbarUpdateActive && !SeekDragging)
             {
                 CurrentTrackPosition = _audioPlayer?.GetPositionInSeconds() ?? 0;
             }
@@ -1047,7 +1028,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
 
         public void StopPlaying()
         {
-            seekbarUpdateTimer.Stop();
+            _seekbarUpdateActive = false;
             CurrentTrackPosition = 0;
             UpdateSeekBarPos(null, null);
             if (_audioPlayer != null)
@@ -1071,7 +1052,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
             else
             {
                 // If there is audio playing, stop it. The new audio entry will start once the PlaybackStopped event triggers.
-                seekbarUpdateTimer.Stop();
+                _seekbarUpdateActive = false;
                 if (_audioPlayer != null)
                 {
                     _audioPlayer.PlaybackStopType = SoundpanelAudioPlayer.PlaybackStopTypes.PlaybackSwitchedToNewFile;
@@ -2065,7 +2046,8 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
 
         private void Soundpanel_Unloaded(object sender, RoutedEventArgs e)
         {
-            seekbarUpdateTimer?.Stop();
+            _seekbarUpdateActive = false;
+            CompositionTarget.Rendering -= UpdateSeekBarPos;
         }
 
         /// <summary>
@@ -2079,6 +2061,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
 
         public override void Dispose()
         {
+            CompositionTarget.Rendering -= UpdateSeekBarPos;
             FreeAudioResources();
             waveformImage.Source = null;
             SoundpanelHIRC_Hexbox?.Dispose();

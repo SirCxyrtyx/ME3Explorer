@@ -164,6 +164,6 @@
             <sharedToolControls:CurveGraph x:Name="graph" DockPanel.Dock="Right" KeyDown="Graph_KeyDown"/>
             <TextBlock Text="{Binding SelectedLineEntry.TLKString}" Grid.Row="1" TextWrapping="Wrap"/>
         </Grid>
-        <exportLoaderControls:Soundpanel x:Name="audioPlayer" Grid.Row="2" Grid.Column="4" MiniPlayerMode="True" GenerateWaveformGraph="True" SeekbarUpdatePeriod="66"/>
+        <exportLoaderControls:Soundpanel x:Name="audioPlayer" Grid.Row="2" Grid.Column="4" MiniPlayerMode="True" GenerateWaveformGraph="True"/>
     </Grid>
 </exportLoaderControls:ExportLoaderControl>

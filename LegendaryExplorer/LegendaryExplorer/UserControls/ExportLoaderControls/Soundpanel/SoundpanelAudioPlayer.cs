@@ -49,6 +49,10 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
                 waveChannel = new WaveChannel32(_audioFileReader);
                 waveChannel.PadWithZeroes = false;
                 _output.Init(waveChannel);
+
+                // Reset position after init to ensure playback starts from the beginning.
+                // Constructing readers and WaveChannel32 can advance the stream position.
+                _audioFileReader.CurrentTime = TimeSpan.Zero;
             }
 
             PlaybackStopType = PlaybackStopTypes.PlaybackStoppedReachingEndOfFile;
