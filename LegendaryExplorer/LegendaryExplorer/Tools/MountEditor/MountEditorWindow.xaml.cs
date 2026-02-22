@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System.Collections.Generic;
 using System.IO;
@@ -24,8 +24,6 @@ namespace LegendaryExplorer.Tools.MountEditor
     public partial class MountEditorWindow : TrackingNotifyPropertyChangedWindowBase
     {
         public ObservableCollectionExtended<MountFlag> MountOptions { get; } = new();
-        //private readonly List<UIMountFlag> ME2MountFlags = new();
-        //private readonly List<UIMountFlag> ME3MountFlags = new();
 
         public ObservableCollectionExtended<UIGameID> Games { get; } = new()
         {
@@ -54,6 +52,7 @@ namespace LegendaryExplorer.Tools.MountEditor
             get => _isME2;
             set => SetProperty(ref _isME2, value);
         }
+
         private string _currentTLKIDString;
         public string CurrentTLKIDString
         {
@@ -68,6 +67,54 @@ namespace LegendaryExplorer.Tools.MountEditor
             set => SetProperty(ref _currentMountFileText, value);
         }
 
+        private string _mountPriorityText = "";
+        public string MountPriorityText
+        {
+            get => _mountPriorityText;
+            set => SetProperty(ref _mountPriorityText, value);
+        }
+
+        private string _tlkIDText = "";
+        public string TLKIDText
+        {
+            get => _tlkIDText;
+            set
+            {
+                if (SetProperty(ref _tlkIDText, value) && int.TryParse(value, out int tlkValue))
+                {
+                    CurrentTLKIDString = TLKManagerWPF.GlobalFindStrRefbyID(tlkValue, SelectedGame.Game);
+                }
+            }
+        }
+
+        private string _dlcFolderName = "";
+        public string DLCFolderName
+        {
+            get => _dlcFolderName;
+            set => SetProperty(ref _dlcFolderName, value);
+        }
+
+        private string _humanReadableName = "";
+        public string HumanReadableName
+        {
+            get => _humanReadableName;
+            set => SetProperty(ref _humanReadableName, value);
+        }
+
+        private string _dlcFolderWatermark = "";
+        public string DLCFolderWatermark
+        {
+            get => _dlcFolderWatermark;
+            set => SetProperty(ref _dlcFolderWatermark, value);
+        }
+
+        private string _humanReadableWatermark = "";
+        public string HumanReadableWatermark
+        {
+            get => _humanReadableWatermark;
+            set => SetProperty(ref _humanReadableWatermark, value);
+        }
+
         public MountEditorWindow() : base("Mount Editor", true)
         {
             CurrentMountFileText = "No mount file loaded. Mouse over fields for descriptions of their values.";
@@ -79,12 +126,8 @@ namespace LegendaryExplorer.Tools.MountEditor
         private void PreviewIntegerInput(object sender, TextCompositionEventArgs e)
         {
             var textBox = sender as TextBox;
-            // Use SelectionStart property to find the caret position.
-            // Insert the previewed text into the existing text in the textbox.
             var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
-
-            // If parsing is successful, set Handled to false
-            e.Handled = !double.TryParse(fullText, out double _); // Why is this double
+            e.Handled = !double.TryParse(fullText, out double _);
         }
 
         public sealed record UIGameID(MEGame Game, string DisplayString);
@@ -109,10 +152,10 @@ namespace LegendaryExplorer.Tools.MountEditor
             loadingNewData = true;
             var mf = new MountFile(fileName);
             SelectedGame = Games.First(uig => uig.Game == mf.Game);
-            DLCFolder_TextBox.Text = IsME2 ? mf.ME2Only_DLCFolderName : "Not used in ME3"; // Update for LE3
-            HumanReadable_TextBox.Text = IsME2 ? mf.ME2Only_DLCHumanName : "Not used in ME3"; // Update for LE3
-            TLKID_TextBox.Text = mf.TLKID.ToString();
-            MountPriority_TextBox.Text = mf.MountPriority.ToString();
+            DLCFolderName = IsME2 ? mf.ME2Only_DLCFolderName : "Not used in ME3";
+            HumanReadableName = IsME2 ? mf.ME2Only_DLCHumanName : "Not used in ME3";
+            TLKIDText = mf.TLKID.ToString();
+            MountPriorityText = mf.MountPriority.ToString();
 
             // Mount flags
             if (IsME2)
@@ -169,18 +212,18 @@ namespace LegendaryExplorer.Tools.MountEditor
                 m.Filters.Add(new CommonFileDialogFilter("Mount files", "*.dlc"));
                 if (m.ShowDialog() == CommonFileDialogResult.Ok)
                 {
-                    var mf = new MountFile() //We will write this to disk
+                    var mf = new MountFile()
                     {
                         Game = SelectedGame.Game,
-                        MountPriority = ushort.Parse(MountPriority_TextBox.Text.Trim()),
-                        TLKID = int.Parse(TLKID_TextBox.Text.Trim()),
+                        MountPriority = ushort.Parse(MountPriorityText.Trim()),
+                        TLKID = int.Parse(TLKIDText.Trim()),
                         MountFlags = GetCurrentMountFlag()
                     };
 
                     if (mf.Game.IsGame2())
                     {
-                        mf.ME2Only_DLCFolderName = DLCFolder_TextBox.Text;
-                        mf.ME2Only_DLCHumanName = HumanReadable_TextBox.Text;
+                        mf.ME2Only_DLCFolderName = DLCFolderName;
+                        mf.ME2Only_DLCHumanName = HumanReadableName;
                     }
                     mf.WriteMountFile(m.FileName);
                     MessageBox.Show("Done.");
@@ -201,90 +244,97 @@ namespace LegendaryExplorer.Tools.MountEditor
 
         private bool Validate()
         {
-            var saveDep = IsME2 ? (int)EME2MountFileFlag.SaveFileDependency : (int)EME3MountFileFlag.SaveFileDependency;
-            if ((saveDep & GetCurrentMountFlag().FlagValue) != 0)
+            var errorMessage = ValidateMountFile(MountPriorityText, TLKIDText, DLCFolderName, HumanReadableName,
+                GetCurrentMountFlag().FlagValue, SelectedGame.Game);
+            if (errorMessage is not null)
             {
-                Xceed.Wpf.Toolkit.MessageBox.Show($"Cannot save a mount file with the SaveFileDependency flag set. This flag causes serious issues with save games when used with mods.", "Validation error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Xceed.Wpf.Toolkit.MessageBox.Show(errorMessage, "Validation error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
-            }
-
-            if (!ushort.TryParse(MountPriority_TextBox.Text, out ushort _))
-            {
-                Xceed.Wpf.Toolkit.MessageBox.Show("Mount priority must be a value between 1 and " + ushort.MaxValue + ".", "Validation error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-
-            if (!int.TryParse(TLKID_TextBox.Text, out int valuex) || valuex <= 0)
-            {
-                Xceed.Wpf.Toolkit.MessageBox.Show("TLK ID must be between 1 and " + (uint.MaxValue / 2) + ".", "Validation error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-
-            if (IsME2)
-            {
-                if (SelectedGame.Game is MEGame.ME2 && HumanReadable_TextBox.Text.Length < 5)
-                {
-                    Xceed.Wpf.Toolkit.MessageBox.Show("Human readable name must be at least 5 characters.\nUse the full name of your mod to prevent end-user confusion.", "Validation error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
-                }
-
-                if (!DLCFolder_TextBox.Text.StartsWith("DLC_"))
-                {
-                    Xceed.Wpf.Toolkit.MessageBox.Show("DLC Folder Name must start with \"DLC_\".\nMass Effect 2 will not load a DLC that does not start with this prefix.", "Validation error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
-                }
             }
             return true;
+        }
+
+        /// <summary>
+        /// Validates mount file parameters. Returns an error message if invalid, or <c>null</c> if valid.
+        /// </summary>
+        /// <param name="mountPriorityText">Text representation of the mount priority value</param>
+        /// <param name="tlkIdText">Text representation of the TLK string reference ID</param>
+        /// <param name="dlcFolderName">DLC folder name (ME2/LE2 only)</param>
+        /// <param name="humanReadableName">Human-readable DLC name (ME2 only)</param>
+        /// <param name="flagValue">Combined mount flag bit-mask value</param>
+        /// <param name="game">Target game for this mount file</param>
+        /// <returns>An error message string if validation fails; <c>null</c> if all parameters are valid.</returns>
+        public static string? ValidateMountFile(string mountPriorityText, string tlkIdText, string dlcFolderName,
+            string humanReadableName, int flagValue, MEGame game)
+        {
+            bool isME2 = game.IsGame2();
+            var saveDep = isME2 ? (int)EME2MountFileFlag.SaveFileDependency : (int)EME3MountFileFlag.SaveFileDependency;
+            if ((saveDep & flagValue) != 0)
+            {
+                return "Cannot save a mount file with the SaveFileDependency flag set. This flag causes serious issues with save games when used with mods.";
+            }
+
+            if (!ushort.TryParse(mountPriorityText, out ushort _))
+            {
+                return "Mount priority must be a value between 1 and " + ushort.MaxValue + ".";
+            }
+
+            if (!int.TryParse(tlkIdText, out int tlkId) || tlkId <= 0)
+            {
+                return "TLK ID must be between 1 and " + (uint.MaxValue / 2) + ".";
+            }
+
+            if (isME2)
+            {
+                if (game is MEGame.ME2 && humanReadableName.Length < 5)
+                {
+                    return "Human readable name must be at least 5 characters.\nUse the full name of your mod to prevent end-user confusion.";
+                }
+
+                if (!dlcFolderName.StartsWith("DLC_"))
+                {
+                    return "DLC Folder Name must start with \"DLC_\".\nMass Effect 2 will not load a DLC that does not start with this prefix.";
+                }
+            }
+
+            return null;
         }
 
         private void PreviewShortInput(object sender, TextCompositionEventArgs e)
         {
             var textBox = sender as TextBox;
-            // Use SelectionStart property to find the caret position.
-            // Insert the previewed text into the existing text in the textbox.
             var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
 
-            //Handled means it won't appear.
             var handled = double.TryParse(fullText, out double _);
 
-            //Validate it
             if (handled)
             {
                 if (int.TryParse(fullText, out int value))
                 {
-                    //logic is backwards. Handled means the character won't appear
-                    e.Handled = value <= 0 || value > short.MaxValue; //16-bit limit
+                    e.Handled = value <= 0 || value > short.MaxValue;
                     return;
                 }
             }
             e.Handled = true;
         }
 
-        private void TLKID_TextChanged(object sender, TextChangedEventArgs e)
+        private void SelectedGameChanged()
         {
-            if (int.TryParse(TLKID_TextBox.Text, out int tlkValue))
+            IsME2 = SelectedGame.Game is MEGame.ME2 or MEGame.LE2;
+            DLCFolderWatermark = IsME2 ? "DLC Folder Name (e.g. DLC_MOD_MYMOD)" : "Not used in ME3";
+            HumanReadableWatermark = IsME2 ? "DLC Human Readable Name (e.g. Superpowers Pack)" : "Not used in ME3";
+            // Re-evaluate the TLK ID string for the newly selected game
+            if (int.TryParse(TLKIDText, out int tlkValue))
             {
                 CurrentTLKIDString = TLKManagerWPF.GlobalFindStrRefbyID(tlkValue, SelectedGame.Game);
             }
         }
 
-        private void SelectedGameChanged()
-        {
-            IsME2 = SelectedGame.Game is MEGame.ME2 or MEGame.LE2;
-            DLCFolder_TextBox.Watermark = IsME2 ? "DLC Folder Name (e.g. DLC_MOD_MYMOD)" : "Not used in ME3";
-            HumanReadable_TextBox.Watermark = IsME2 ? "DLC Human Readable Name (e.g. Superpowers Pack)" : "Not used in ME3";
-            //MountComboBox.SelectedIndex = 0;
-            TLKID_TextChanged(null, null);
-        }
         private void Window_Drop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                // Note that you can have more than one file.
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-
-                // Assuming you have one file that you care about, pass it off to whatever
-                // handling code you have defined.
                 LoadFile(files[0]);
             }
         }
@@ -293,7 +343,6 @@ namespace LegendaryExplorer.Tools.MountEditor
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                // Note that you can have more than one file.
                 var files = (string[])e.Data.GetData(DataFormats.FileDrop);
                 string ext = Path.GetExtension(files[0]).ToLower();
                 if (ext != ".dlc")
@@ -316,10 +365,6 @@ namespace LegendaryExplorer.Tools.MountEditor
         private bool loadingNewData;
         private void MountOptionsComboBox_ItemSelectionChanged(object sender, Xceed.Wpf.Toolkit.Primitives.ItemSelectionChangedEventArgs e)
         {
-            //if (!loadingNewData)
-            //{
-            //    MountFlagsComboBox.SelectedItem = GetCurrentMountFlag();
-            //}
         }
     }
 }
