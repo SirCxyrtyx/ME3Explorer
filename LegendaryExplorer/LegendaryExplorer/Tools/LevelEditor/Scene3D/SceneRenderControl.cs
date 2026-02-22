@@ -292,6 +292,8 @@ public sealed class SceneRenderControl : ContentControl, IDisposable, INotifyPro
     private Image Image;
     private readonly Stopwatch Stopwatch = new();
     private bool _shouldRender;
+    private bool _suspendRendering;
+    private bool _pendingSurfaceRecreation;
     private RenderContext _context;
     private Action _onImageRendered;
     private bool _captureNextFrame;
@@ -471,6 +473,15 @@ public sealed class SceneRenderControl : ContentControl, IDisposable, INotifyPro
 
     private void D3DImage_OnRender(IntPtr surface, bool isNewSurface)
     {
+        if (_suspendRendering)
+        {
+            if (isNewSurface)
+            {
+                _pendingSurfaceRecreation = true;
+            }
+            return;
+        }
+
         if (isNewSurface)
         {
             // Debug.WriteLine("IsNewSurface");
@@ -537,6 +548,30 @@ public sealed class SceneRenderControl : ContentControl, IDisposable, INotifyPro
         //}
 
         _shouldRender = shouldRender;
+    }
+
+    /// <summary>
+    /// Prevents D3DImage_OnRender from issuing any D3D11 calls.
+    /// Must be called before offloading D3D11 work to a background thread
+    /// to avoid concurrent access to the Device/ImmediateContext.
+    /// </summary>
+    public void SuspendRendering()
+    {
+        _suspendRendering = true;
+    }
+
+    /// <summary>
+    /// Re-enables rendering after a call to <see cref="SuspendRendering"/>.
+    /// If a surface recreation was missed during suspension, triggers one now.
+    /// </summary>
+    public void ResumeRendering()
+    {
+        _suspendRendering = false;
+        if (_pendingSurfaceRecreation)
+        {
+            _pendingSurfaceRecreation = false;
+            D3DImage?.SetPixelSize(RenderWidth, RenderHeight);
+        }
     }
 
     #region Input Events

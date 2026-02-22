@@ -301,7 +301,21 @@ public partial class LevelEditor : WPFBase
         IsBusy = true;
         BusyText = $"Loading {Path.GetFileName(path)}...";
 
-        var (actors, ignoredClasses) = await Task.Run(() => LoadActors(levelBin, openFile)).ConfigureAwait(true);
+        // Suspend rendering while loading on a background thread to prevent
+        // concurrent D3D11 Device/ImmediateContext access (the render loop
+        // uses ImmediateContext on the UI thread, and LoadActors creates
+        // D3D11 buffers on the thread pool thread).
+        SceneViewer.SuspendRendering();
+        LoadActorsResult result;
+        try
+        {
+            result = await Task.Run(() => LoadActors(levelBin, openFile)).ConfigureAwait(true);
+        }
+        finally
+        {
+            SceneViewer.ResumeRendering();
+        }
+        var (actors, ignoredClasses) = result;
         var sorted = actors.OrderBy(actor => actor.Export.UIndex).ToList();
         openFile.Actors.AddRange(sorted);
         Actors.AddRange(sorted);
