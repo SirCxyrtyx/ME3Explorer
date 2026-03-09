@@ -642,6 +642,30 @@ namespace LegendaryExplorerCore.Packages
             return export.GetProperties(packageCache: cache).GetProp<T>(name);
         }
 
+        /// <summary>Gets the <see cref="IntProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public static int GetProperty(this ExportEntry export, string name, int defaultValue, PackageCache cache = null)
+            => export.GetProperties(packageCache: cache).GetProp(name, defaultValue);
+
+        /// <summary>Gets the <see cref="FloatProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public static float GetProperty(this ExportEntry export, string name, float defaultValue, PackageCache cache = null)
+            => export.GetProperties(packageCache: cache).GetProp(name, defaultValue);
+
+        /// <summary>Gets the <see cref="BoolProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public static bool GetProperty(this ExportEntry export, string name, bool defaultValue, PackageCache cache = null)
+            => export.GetProperties(packageCache: cache).GetProp(name, defaultValue);
+
+        /// <summary>Gets the <see cref="StrProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public static string GetProperty(this ExportEntry export, string name, string defaultValue, PackageCache cache = null)
+            => export.GetProperties(packageCache: cache).GetProp(name, defaultValue);
+
+        /// <summary>Gets the <see cref="NameProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public static NameReference GetProperty(this ExportEntry export, string name, NameReference defaultValue, PackageCache cache = null)
+            => export.GetProperties(packageCache: cache).GetProp(name, defaultValue);
+
+        ///<inheritdoc cref="PropertyCollection.GetPropEnum{TEnum}"/>
+        public static TEnum GetPropertyEnum<TEnum>(this ExportEntry export, string name, TEnum defaultValue = default, PackageCache cache = null) where TEnum : struct, Enum
+            => export.GetProperties(packageCache: cache).GetPropEnum(name, defaultValue);
+
         /// <summary>
         /// Writes a property to the export, replacing a property with the same <see cref="Property.Name"/> and <see cref="Property.StaticArrayIndex"/> if it exists,
         /// otherwise adding a new one. 

@@ -33,7 +33,7 @@ namespace LegendaryExplorerCore.Unreal
         public bool IsImmutable;
 
         /// <summary>
-        /// Gets the <see cref="Property"/> with the specified name and optionally a static array index. The property name is checked case insensitively. 
+        /// Gets the <see cref="Property"/> with the specified name and optionally a static array index. The property name is checked case insensitively.
         /// </summary>
         /// <remarks>Ensure the generic type matches the result you want or it will return null</remarks>
         /// <param name="name">Name of property to find</param>
@@ -45,10 +45,59 @@ namespace LegendaryExplorerCore.Unreal
             {
                 if (prop.Name == name && prop.StaticArrayIndex == staticArrayIndex)
                 {
+                    Debug.Assert(prop is T or NoneProperty, $"GetProp<{typeof(T).Name}>(\"{name}\"): property exists but is {prop.GetType().Name}. Check the generic type argument.");
                     return prop as T;
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// Gets the named property's value, returning <paramref name="defaultValue"/> if the property does not exist.
+        /// </summary>
+        public bool TryGetProp<T>(NameReference name, out T prop, int staticArrayIndex = 0) where T : Property
+        {
+            prop = GetProp<T>(name, staticArrayIndex);
+            return prop is not null;
+        }
+
+        /// <summary>Gets the <see cref="IntProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public int GetProp(NameReference name, int defaultValue, int staticArrayIndex = 0)
+            => GetProp<IntProperty>(name, staticArrayIndex)?.Value ?? defaultValue;
+
+        /// <summary>Gets the <see cref="FloatProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public float GetProp(NameReference name, float defaultValue, int staticArrayIndex = 0)
+            => GetProp<FloatProperty>(name, staticArrayIndex)?.Value ?? defaultValue;
+
+        /// <summary>Gets the <see cref="BoolProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public bool GetProp(NameReference name, bool defaultValue, int staticArrayIndex = 0)
+            => GetProp<BoolProperty>(name, staticArrayIndex)?.Value ?? defaultValue;
+
+        /// <summary>Gets the <see cref="StrProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public string GetProp(NameReference name, string defaultValue, int staticArrayIndex = 0)
+            => GetProp<StrProperty>(name, staticArrayIndex)?.Value ?? defaultValue;
+
+        /// <summary>Gets the <see cref="NameProperty"/> with the specified name, returning <paramref name="defaultValue"/> if it does not exist.</summary>
+        public NameReference GetProp(NameReference name, NameReference defaultValue, int staticArrayIndex = 0)
+            => GetProp<NameProperty>(name, staticArrayIndex)?.Value ?? defaultValue;
+
+        /// <summary>
+        /// Gets the value of the named <see cref="EnumProperty"/> as a <typeparamref name="TEnum"/>, returning <paramref name="defaultValue"/> if the property does not exist.
+        /// Fires a debug assertion if the stored enum name cannot be parsed as <typeparamref name="TEnum"/>.
+        /// </summary>
+        public TEnum GetPropEnum<TEnum>(NameReference name, TEnum defaultValue = default, int staticArrayIndex = 0) where TEnum : struct, Enum
+        {
+            NameReference? value = GetProp<EnumProperty>(name, staticArrayIndex)?.Value;
+            if (value is null)
+            {
+                return defaultValue;
+            }
+            if (Enum.TryParse(value.Value.Name, out TEnum result))
+            {
+                return result;
+            }
+            Debug.Assert(false, $"GetPropEnum<{typeof(TEnum).Name}>(\"{name}\"): Could not parse \"{value.Value.Name}\" as {typeof(TEnum).Name}.");
+            return defaultValue;
         }
 
         /// <summary>
@@ -907,6 +956,36 @@ namespace LegendaryExplorerCore.Unreal
         {
             return Properties.GetProp<T>(name, staticArrayIndex);
         }
+
+        ///<inheritdoc cref="PropertyCollection.TryGetProp{T}"/>
+        public bool TryGetProp<T>(NameReference name, out T prop, int staticArrayIndex = 0) where T : Property
+        {
+            return Properties.TryGetProp(name, out prop, staticArrayIndex);
+        }
+
+        ///<inheritdoc cref="PropertyCollection.GetProp(NameReference, int, int)"/>
+        public int GetProp(NameReference name, int defaultValue, int staticArrayIndex = 0)
+            => Properties.GetProp(name, defaultValue, staticArrayIndex);
+
+        ///<inheritdoc cref="PropertyCollection.GetProp(NameReference, float, int)"/>
+        public float GetProp(NameReference name, float defaultValue, int staticArrayIndex = 0)
+            => Properties.GetProp(name, defaultValue, staticArrayIndex);
+
+        ///<inheritdoc cref="PropertyCollection.GetProp(NameReference, bool, int)"/>
+        public bool GetProp(NameReference name, bool defaultValue, int staticArrayIndex = 0)
+            => Properties.GetProp(name, defaultValue, staticArrayIndex);
+
+        ///<inheritdoc cref="PropertyCollection.GetProp(NameReference, string, int)"/>
+        public string GetProp(NameReference name, string defaultValue, int staticArrayIndex = 0)
+            => Properties.GetProp(name, defaultValue, staticArrayIndex);
+
+        ///<inheritdoc cref="PropertyCollection.GetProp(NameReference, NameReference, int)"/>
+        public NameReference GetProp(NameReference name, NameReference defaultValue, int staticArrayIndex = 0)
+            => Properties.GetProp(name, defaultValue, staticArrayIndex);
+
+        ///<inheritdoc cref="PropertyCollection.GetPropEnum{TEnum}"/>
+        public TEnum GetPropEnum<TEnum>(NameReference name, TEnum defaultValue = default, int staticArrayIndex = 0) where TEnum : struct, Enum
+            => Properties.GetPropEnum(name, defaultValue, staticArrayIndex);
 
         ///<inheritdoc/>
         public override void WriteTo(EndianWriter writer, IMEPackage pcc, bool valueOnly = false)
